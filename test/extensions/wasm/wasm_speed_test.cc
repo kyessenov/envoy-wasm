@@ -39,6 +39,10 @@ public:
     scriptLog_(level, message);
   }
   MOCK_METHOD2(scriptLog_, void(spdlog::level::level_enum level, absl::string_view message));
+
+  void setPlugin(Extensions::Common::Wasm::PluginSharedPtr plugin) {
+    plugin_ = plugin;
+  }
 };
 
 static void BM_WasmSimpleCallSpeedTest(benchmark::State& state, std::string vm) {
@@ -50,7 +54,7 @@ static void BM_WasmSimpleCallSpeedTest(benchmark::State& state, std::string vm) 
   auto scope = Stats::ScopeSharedPtr(stats_store.createScope("wasm."));
   NiceMock<LocalInfo::MockLocalInfo> local_info;
   auto root_context = new TestRoot();
-  auto name = "";
+  auto name = "some_very_long_plugin_name_that_needs_to_be_copied_into_vm_memory_and_computed_upon_but_should_it_really_be";
   auto root_id = "";
   auto vm_id = "";
   auto vm_configuration = "";
@@ -71,7 +75,12 @@ static void BM_WasmSimpleCallSpeedTest(benchmark::State& state, std::string vm) 
   EXPECT_TRUE(wasm->initialize(code, false));
   wasm->setContext(root_context);
   wasm->startForTesting(std::unique_ptr<Common::Wasm::Context>(root_context), plugin);
+  root_context->setPlugin(plugin);
   EXPECT_NE(wasm, nullptr);
+
+  // warm up
+  wasm->tickHandler(root_context->id());
+
   for (auto _ : state) {
     wasm->tickHandler(root_context->id());
   }

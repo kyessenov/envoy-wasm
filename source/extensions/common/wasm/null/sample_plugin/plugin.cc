@@ -26,10 +26,21 @@ public:
 };
 
 void PluginRootContext::onTick() {
-  uint64_t t;
-  if (WasmResult::Ok != proxy_get_current_time_nanoseconds(&t)) {
-    logError(std::string("bad proxy_get_current_time_nanoseconds result"));
+  std::string property = "plugin_name";
+  const char* value_ptr = nullptr;
+  size_t value_size = 0;
+  auto result = proxy_get_property(property.data(), property.size(), &value_ptr, &value_size);
+  if (WasmResult::Ok != result) {
+    logError("bad result for getProperty");
   }
+  if (value_size != 107) {
+    logError("bad size");
+  }
+  envoy::api::v2::core::GrpcService grpc_service;
+  grpc_service.mutable_envoy_grpc()->set_cluster_name(std::string(value_ptr, value_size));
+  std::string grpc_service_string;
+  grpc_service.SerializeToString(&grpc_service_string);
+  ::free(const_cast<char*>(value_ptr));
 }
 
 class PluginContext : public Context {
